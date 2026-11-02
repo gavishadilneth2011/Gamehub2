@@ -1,0 +1,1 @@
+Copy your existing zombie game files into this folder. Keep a backup of the original game first. Update the Zombie Survival link in dashboard.php if your entry file is not index.html or if you choose a different folder name.

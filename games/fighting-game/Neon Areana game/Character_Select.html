@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON ARENA — Choose Your Fighter</title>
+<link rel="icon" type="image/x-icon" href="../assets/fighting game logo.png">
+<style>
+  :root{
+    --bg-deep:#0a0714;
+    --bg-mid:#160e2b;
+    --p1:#2fd8ff;
+    --p2:#c34bff;
+    --gold:#ffd23f;
+    --ink:#eaf6ff;  
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden;
+    font-family:'Segoe UI',system-ui,sans-serif;}
+  #root{position:relative;width:100%;height:100vh;display:flex;align-items:center;justify-content:center;}
+  #stage{
+    position:relative;width:1000px;max-width:100vw;height:562px;max-height:100vh;
+    background:radial-gradient(ellipse at 50% 20%, #26134a 0%, var(--bg-mid) 55%, var(--bg-deep) 100%);
+    overflow:hidden;border-top:2px solid rgba(255,255,255,.06);border-bottom:4px solid #000;
+    box-shadow:0 0 80px rgba(150,80,255,.15), 0 0 0 1px rgba(255,255,255,.04);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+    overflow-y:auto;padding:20px 0;
+  }
+  .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px rgba(0,0,0,.65);}
+  .scanlines{position:absolute;inset:0;pointer-events:none;opacity:.05;
+    background:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px);mix-blend-mode:overlay;}
+
+  .title-eyebrow{font-size:12px;letter-spacing:5px;color:#9d8bc4;text-transform:uppercase;margin:0;}
+  .title-main{font-size:28px;font-weight:900;letter-spacing:4px;margin:0 0 2px;
+    background:linear-gradient(90deg,var(--p1),#fff 50%,var(--p2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 18px rgba(150,120,255,.5));}
+
+  .columns{display:flex;gap:32px;}
+  .column{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .col-label{font-size:12px;letter-spacing:3px;font-weight:800;}
+  .p1side .col-label{color:var(--p1);text-shadow:0 0 8px var(--p1);}
+  .p2side .col-label{color:var(--p2);text-shadow:0 0 8px var(--p2);}
+
+  .cards{display:flex;flex-wrap:wrap;gap:8px;width:224px;justify-content:center;}
+  .card{width:108px;padding:8px 6px 9px;border-radius:10px;cursor:pointer;
+    border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.03);
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+    transition:border-color .15s, box-shadow .15s, transform .1s;}
+  .card:hover{transform:translateY(-3px);}
+  .p1side .card.selected{border-color:var(--p1);box-shadow:0 0 20px rgba(47,216,255,.5), inset 0 -14px 24px rgba(47,216,255,.12);}
+  .p2side .card.selected{border-color:var(--p2);box-shadow:0 0 20px rgba(195,75,255,.5), inset 0 -14px 24px rgba(195,75,255,.12);}
+  .portrait{width:74px;height:74px;background-repeat:no-repeat;image-rendering:pixelated;}
+  .card .cname{font-size:10px;letter-spacing:1px;font-weight:700;color:var(--ink);}
+
+  .btn{font-family:inherit;font-weight:800;letter-spacing:2px;font-size:15px;
+    padding:11px 30px;border-radius:8px;border:none;cursor:pointer;
+    background:linear-gradient(90deg,var(--p1),var(--p2));color:#0a0714;
+    box-shadow:0 0 24px rgba(150,120,255,.4);transition:transform .12s;}
+  .btn:hover{transform:translateY(-2px) scale(1.04);}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none;}
+  .hub-back{position:absolute;top:14px;left:14px;font-family:inherit;font-weight:800;
+    letter-spacing:1px;font-size:12px;padding:8px 14px;border-radius:8px;
+    border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.04);
+    color:#eaf6ff;cursor:pointer;text-decoration:none;z-index:5;}
+  .hub-back:hover{border-color:var(--p2);color:var(--p2);}
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="stage">
+    <a class="hub-back" href="../game-hub.html">◀ GAME HUB</a>
+    <p class="title-eyebrow">LOCAL 1V1 · SAME KEYBOARD</p>
+    <h1 class="title-main">CHOOSE YOUR FIGHTER</h1>
+
+    <div class="columns">
+      <div class="column p1side">
+        <div class="col-label">PLAYER 1</div>
+        <div class="cards" id="p1cards"></div>
+      </div>
+      <div class="column p2side">
+        <div class="col-label">PLAYER 2</div>
+        <div class="cards" id="p2cards"></div>
+      </div>
+    </div>
+
+    <button class="btn" id="goBtn">FIGHT</button>
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // only need the idle strip for portraits here
+  //
+  // Knight1 / Knight2 / Knight3 removed and replaced with the three
+  // vampire-pack characters (same keys used in index2.html's CHAR_SHEETS,
+  // so selection carries straight through with no extra mapping step).
+  const ROSTER = {
+    shinobi:     {label:'SHINOBI',      src:'../assets/sprites/Shinobi/Idle.png',           frames:6},
+    samurai:     {label:'SAMURAI',      src:'../assets/sprites/Samurai/Idle.png',           frames:6},
+    fighter:     {label:'BRAWLER',      src:'../assets/sprites/Fighter/Idle.png',           frames:6},
+    vampire:     {label:'VAMPIRE',      src:'../assets/assets/sprites/Converted_Vampire/Idle.png', frames:5},
+    countess:    {label:'COUNTESS',     src:'../assets/assets/sprites/Countess_Vampire/Idle.png',  frames:5},
+    vampiregirl: {label:'VAMPIRE GIRL', src:'../assets/assets/sprites/Vampire_Girl/Idle.png',       frames:5}
+  };
+  const KEYS = Object.keys(ROSTER);
+
+  // Selection is passed forward via URL params (?p1=...&p2=...), same as
+  // before. It's now also mirrored into localStorage under this key, so
+  // that if you land here fresh (no URL params — e.g. typed the URL by
+  // hand, or a bookmark) the screen still remembers the last pair you
+  // picked instead of always resetting to shinobi/samurai.
+  const STORE_KEY = 'neonArenaSelection';
+  function loadStoredSelection(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if(!raw) return null;
+      const parsed = JSON.parse(raw);
+      if(ROSTER[parsed.p1] && ROSTER[parsed.p2]) return parsed;
+    }catch(e){ /* localStorage unavailable or bad data — ignore */ }
+    return null;
+  }
+  function saveSelection(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(picked)); }catch(e){}
+  }
+
+  const urlParams = new URLSearchParams(location.search);
+  const storedSelection = loadStoredSelection();
+  let picked = {
+    p1: ROSTER[urlParams.get('p1')] ? urlParams.get('p1') : (storedSelection ? storedSelection.p1 : 'shinobi'),
+    p2: ROSTER[urlParams.get('p2')] ? urlParams.get('p2') : (storedSelection ? storedSelection.p2 : 'samurai')
+  };
+  saveSelection();
+
+  function paintPortrait(el, key){
+    const c = ROSTER[key];
+    el.style.backgroundImage = "url('"+c.src+"')";
+    el.style.backgroundPosition = '0px 0px';
+    el.style.backgroundSize = (c.frames*74)+'px 74px';
+  }
+
+  function buildColumn(containerId, side){
+    const container = document.getElementById(containerId);
+    KEYS.forEach(key=>{
+      const card = document.createElement('div');
+      card.className = 'card'+(picked[side]===key?' selected':'');
+      card.dataset.key = key;
+
+      const portrait = document.createElement('div');
+      portrait.className = 'portrait';
+      paintPortrait(portrait, key);
+
+      const name = document.createElement('div');
+      name.className = 'cname';
+      name.textContent = ROSTER[key].label;
+
+      card.appendChild(portrait);
+      card.appendChild(name);
+      card.addEventListener('click', ()=>{
+        picked[side] = key;
+        [...container.children].forEach(c=>c.classList.toggle('selected', c.dataset.key===key));
+        saveSelection();
+      });
+      container.appendChild(card);
+    });
+  }
+
+  buildColumn('p1cards','p1');
+  buildColumn('p2cards','p2');
+
+  document.getElementById('goBtn').addEventListener('click', ()=>{
+    saveSelection();
+    const params = new URLSearchParams({ p1: picked.p1, p2: picked.p2 });
+    location.href = './index2.html?'+params.toString();
+  });
+})();
+</script>
+</body>
+</html>
